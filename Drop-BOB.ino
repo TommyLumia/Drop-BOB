@@ -57,6 +57,8 @@ char LCD[15] = "              ";
 // SETUP VALUES ======================================================
 double set_DPM = 6.0;
 float Servo_Val = 140; // starting servo value (0 is full open 180 is full close)
+float servo_min = 15;
+float servo_max = 195;
 
 // RUNNING AVERAGE VARIABLES =========================================
 const int numReadings = 5;
@@ -130,8 +132,8 @@ void open_up(){
       
       Servo_Val = Servo_Val - (set_DPM - temp_DPM); // if the servo closed and no drops are comming for too long open it up a little.
       
-      if (Servo_Val < 0)
-        Servo_Val = 0;
+      if (Servo_Val < servo_min)
+        Servo_Val = servo_min;
         
       //myservo.attach(ServoPIN);  // attaches the servo on pin 2 to the servo object ==================== 2
       //delay(15);
@@ -285,8 +287,8 @@ void loop(){
    
     if ( DPM < set_DPM * 2.0 && first_drop == 0) { ////THIS GIVES SEPERATE CONTROL OF DPM GREATER THAN SETPOINT (default 6)
       Servo_Val = Servo_Val - kp * error - ki * errSum - kd * dErr; // Set servo change depending on how far away from set_DPM you are at
-      if (Servo_Val < 0) Servo_Val = 0;
-      if (Servo_Val > 180) Servo_Val = 180;
+      if (Servo_Val < servo_min) Servo_Val = servo_min;
+      if (Servo_Val > servo_max) Servo_Val = servo_max;
       
       //myservo.attach(ServoPIN);  // attaches the servo on pin 2 to the servo object ==================== 2
       //delay(15);
@@ -296,8 +298,8 @@ void loop(){
     }
     else if ( DPM > set_DPM * 2.0 && first_drop == 0) { ////THIS GIVES SEPERATE CONTROL OF DPM GREATER THAN SETPOINT BY ALOT!!!! (default 6)
       Servo_Val = Servo_Val - kp*0.4 * error - ki * errSum - kd * dErr; // Set servo change depending on how far away from set_DPM you are at
-      if (Servo_Val < 0) Servo_Val = 0;
-      if (Servo_Val > 180) Servo_Val = 180;
+      if (Servo_Val < servo_min) Servo_Val = servo_min;
+      if (Servo_Val > servo_max) Servo_Val = servo_max;
       
       //myservo.attach(ServoPIN);  // attaches the servo on pin 2 to the servo object ==================== 2
       //delay(15);
@@ -331,7 +333,7 @@ void loop(){
 
   lastErr = error;
   
-  if( (millis()-lastDrop) > 60000 && Servo_Val < 10){
+  if( (millis()-lastDrop) > 60000 && Servo_Val < 15){
     Serial.println();Serial.println("FINISHED!!!");
     char LCD[15] = "FINISHED!!!!!!"; //15 char only
     Blynk.tweet("Brew DONE!!: www.bobbobblogs.blogspot.com");
