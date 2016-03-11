@@ -151,13 +151,13 @@ void open_up(){
       Serial.print("\t");
       Serial.print(set_DPM);Serial.print("\t");Serial.print("Setpoint");
       Serial.print("\t");
-      Serial.print(Servo_Val);Serial.print("\t");Serial.println("Servo_val");/*
+      Serial.print(Servo_Val);Serial.print("\t");Serial.print("Servo_val");//*
       Serial.print("\t");
       Serial.print("   ");Serial.print("\t");Serial.print("error");
       Serial.print("\t");
       Serial.print("   ");Serial.print("\t");Serial.print("errSum");
       Serial.print("\t");
-      Serial.print("   ");Serial.print("\t");Serial.println("dErr");*/
+      Serial.print("   ");Serial.print("\t");Serial.println("dErr");//*/
     }//----------------------------------------------------------------------------medium loop 2
   }
 
@@ -316,13 +316,13 @@ void loop(){
     Serial.print("\t");
     Serial.print(set_DPM);Serial.print("\t");Serial.print("Setpoint");
     Serial.print("\t");
-    Serial.print(Servo_Val);Serial.print("\t");Serial.println("Servo_val");/*
+    Serial.print(Servo_Val);Serial.print("\t");Serial.print("Servo_val");//*
     Serial.print("\t");
     Serial.print(kp * error);Serial.print("\t");Serial.print("error");
     Serial.print("\t");
     Serial.print(ki * errSum);Serial.print("\t");Serial.print("errSum");
     Serial.print("\t");
-    Serial.print(kd * dErr);Serial.print("\t");Serial.println("dErr");*/
+    Serial.print(kd * dErr);Serial.print("\t");Serial.println("dErr");//*/
      
     first_drop = 0;
   }//----------------------------------------------------------------------------------------------------big loop 1
@@ -333,7 +333,7 @@ void loop(){
 
   lastErr = error;
   
-  if( (millis()-lastDrop) > 60000 && Servo_Val < 15){
+  if( (millis()-lastDrop) > 60000 && Servo_Val < (servo_min + 2)){
     Serial.println();Serial.println("FINISHED!!!");
     char LCD[15] = "FINISHED!!!!!!"; //15 char only
     Blynk.tweet("Brew DONE!!: www.bobbobblogs.blogspot.com");
