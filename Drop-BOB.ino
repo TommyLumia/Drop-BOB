@@ -87,6 +87,8 @@ void setpoint_DPM_update(){ //V2 is "setDPM" - actual value being reported back 
 }
 
 BLYNK_WRITE(V3){ //V3 is "Blynk slider for DPM setting" - INPUT
+  pause = 1;
+  slide_time = millis();
   set_DPM = param[0].asInt();
 }
 
