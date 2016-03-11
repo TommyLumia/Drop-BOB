@@ -329,7 +329,7 @@ void loop(){
 
   lastErr = error;
   
-  if( (millis()-lastDrop) > 60000 && Servo_Val < 2){
+  if( (millis()-lastDrop) > 60000 && Servo_Val < 5){
     Serial.println();Serial.println("FINISHED!!!");
     char LCD[15] = "FINISHED!!!!!!"; //15 char only
     Blynk.tweet("Brew DONE!!: www.bobbobblogs.blogspot.com");
