@@ -85,6 +85,36 @@ float DPM_tune_avg = 0;
 
 //=========================================================================BLYNK functions & Widgets=====
 
+void pause_requests(){
+  while(pause == 1){
+     Blynk.run(); 
+     int lapse = millis() - slide_time;
+
+     if (slide_time == 0){                  // If the pause comes from the app, close the servo to prevent drops (true pause)
+        myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+        delay(15);
+        myservo.write(servo_max);
+        Blynk.virtualWrite(V0, servo_max);
+     }
+     
+     if (lapse > 1000 && slide_time > 0){   // if the pause comes from a parameter change
+        pause = 0;
+        slide_time = 0;
+        myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+        delay(15);
+        myservo.write(Servo_Val);
+        Blynk.virtualWrite(V0, Servo_Val);
+        Blynk.virtualWrite(V2, set_DPM);
+     }
+     
+     if (pause == 0) {                       // exit clause to put the valve back after pausing
+        myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+        delay(15);
+        myservo.write(Servo_Val);
+        Blynk.virtualWrite(V0, Servo_Val);
+     }
+  }
+}
 
 BLYNK_WRITE(V1){ //V1 pushbutton in Blynk app that simulates a drop of water (for testing) - INPUT
   if (param.asInt() == 1){
@@ -120,9 +150,12 @@ void open_up(){
     
     Servo_Val = Servo_Val - 0.5*(set_DPM - temp_DPM); // if the servo closed and no drops are comming for too long open it up a little.
     
-    if (Servo_Val < servo_min)
+    if (Servo_Val < servo_min){
       Servo_Val = servo_min;
-      
+    }
+
+    myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+    delay(15);  
     myservo.write(Servo_Val);
               
     creep = 0;
@@ -130,13 +163,22 @@ void open_up(){
 }
 
 void tune(){
-  for(int serv_tune = Servo_Val - 5; serv_tune < 190; serv_tune++){
-    myservo.write(serv_tune); 
+  for(Servo_Val - 5; Servo_Val < 190; Servo_Val++){
+    myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+    delay(15);
+    myservo.write(Servo_Val); 
     add = 0;
     
     for(int run_tune = 0; run_tune < tuning_drops; run_tune++){
       
-      while(analogRead(photo_interuptor_PIN)<500){Blynk.run();/*wait for a drop*/}
+      while(analogRead(photo_interuptor_PIN)<500){
+        Blynk.run();
+        timer.run();
+        pause_requests();
+        if (millis() - lastDrop > 2500) myservo.detach(); // turn off servo after 2.5 seconds to reduce jitter noise
+        /*wait for a drop ... accept Blynk requests, timer requests, and pause requests*/
+      }
+      
       count++;
       delta = millis() - lastDrop; //get the difference in time between each drop
       lastDrop = millis(); // remember time of last drop to prevent bouncing.
@@ -153,19 +195,20 @@ void tune(){
       Serial.print("\t");
       Serial.print(set_DPM);Serial.print("\t");Serial.print("Setpoint");
       Serial.print("\t");
-      Serial.print(serv_tune);Serial.print("\t");Serial.println("Servo_val");//*/
+      Serial.print(Servo_Val);Serial.print("\t");Serial.println("Servo_val");//*/
 
       Blynk.virtualWrite(V10, DPM);
       Blynk.virtualWrite(V7, DPM_avg);
       Blynk.virtualWrite(V4, count);
-      Blynk.virtualWrite(V0, serv_tune);
+      Blynk.virtualWrite(V0, Servo_Val);
       Blynk.virtualWrite(V5, millis() / 1000);
+      Blynk.virtualWrite(V2, set_DPM);
 
       while (millis() - lastDrop < 100) {Blynk.run();/*debounce*/}
     }
     DPM_tune_avg = add / tuning_drops;
     
-    if (DPM_tune_avg < set_DPM) {Servo_Val = serv_tune; break;} // make avg !>!>!>
+    if (DPM_tune_avg < set_DPM) {break;}
   }
 }
 
@@ -239,16 +282,7 @@ void setup()
 
 void loop(){
 
-  while(pause == 1){
-     Blynk.run(); 
-     int lapse = millis() - slide_time;
-     if ( lapse > 1000 && slide_time > 0){
-        pause = 0;
-        slide_time = 0;
-        myservo.write(Servo_Val);
-        Blynk.virtualWrite(V0, Servo_Val);
-     }
-  }
+  pause_requests(); //accept pause requests
 
   if ((millis()-uptime) > 1000){
     uptime = millis();
@@ -311,14 +345,17 @@ void loop(){
       Servo_Val = Servo_Val - kp * error - ki * errSum - kd * dErr; // Set servo change depending on how far away from set_DPM you are at
       if (Servo_Val < servo_min) Servo_Val = servo_min;
       if (Servo_Val > servo_max) Servo_Val = servo_max;
-      
+
+      myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+      delay(15);
       myservo.write(Servo_Val);
     }/*
     else if ( DPM > set_DPM && first_drop == 0) { // This is to give a Forward or Reverse BIAS (commented out)
       Servo_Val = Servo_Val - kp * error - ki * errSum - kd * dErr; // Set servo change depending on how far away from set_DPM you are at
       if (Servo_Val < servo_min) Servo_Val = servo_min;
       if (Servo_Val > servo_max) Servo_Val = servo_max;
-      
+      myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+      delay(15);
       myservo.write(Servo_Val);
     }*/
     
@@ -360,6 +397,8 @@ void loop(){
   if (voltage < 1.0 && state == LOW ){  // end of pulse, now we may expect a new one, DEBOUNCE
     if (millis() - lastDrop > 100) state = HIGH; // only go back to state high if some time has passed.
   }
+
+  if (millis() - lastDrop > 1500) myservo.detach(); // turn off servo after 2.5 seconds to reduce jitter noise
 
   lastErr = error;
   
