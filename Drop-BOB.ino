@@ -1,14 +1,15 @@
+
+
 /* This sketch is created for use of a cold drip coffeemaker with a THING DEV from Sparkfun using the ESP8266 wifi chip. 
 Copyright: Bobby Lumia, may be used and modified for personal use only. No resale.
 Please reference my project blog: http://bobbobblogs.blogspot.ca/ if useing this sketch in your work.
 
 When uploading to ESP8266 with Version 2.1 in Arduino boards use 80MHz and 115200 to prevent board crashes (known issue with servo)
 */
-
+//#include <VarSpeedServo.h> // for the servo - better library with ability to decide speed of servo and wait to complete
+#include <Servo.h>  // for the servo
 #include <stdlib.h> // Include Standard Library
-#include <Servo.h> // for the servo
 #include <SimpleTimer.h>
-
 #include <Wire.h>
 
 // for the ESP wifi - Blynk App =====\/
@@ -36,6 +37,7 @@ const double kp = 0.7, ki = 0.4/60000.0, kd = 0; //kp tunes to 1.3 alone
 
 //======================================================
 
+//VarSpeedServo myservo;  // create servo object to control a servo 
 Servo myservo;  // create servo object to control a servo 
 
 long count = 0;
@@ -54,6 +56,8 @@ bool led_gp5;
 float A = 0;
 float B = 0;
 long uptime = 0;
+float Low_LED = millis();
+float High_LED = millis();
 
 // SETUP VALUES ======================================================
 int set_DPM = 6;
@@ -83,6 +87,12 @@ float add = 0;
 float DPM_tune_avg = 0;
 //====================================================================
 
+// Servo Variables ==================================================
+const int Servo_update_Speed = 500; // update every X milliseconds
+const int Servo_movements = 1;      // how much to update servo position by
+float Servo_adjust = millis();
+
+
 //=========================================================================BLYNK functions & Widgets=====
 
 void pause_requests(){
@@ -93,7 +103,7 @@ void pause_requests(){
      if (slide_time == 0){                  // If the pause comes from the app, close the servo to prevent drops (true pause)
         myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
         delay(15);
-        myservo.write(servo_max);
+        myservo.write(servo_max);//,30,true);
         Blynk.virtualWrite(V0, servo_max);
      }
      
@@ -102,7 +112,7 @@ void pause_requests(){
         slide_time = 0;
         myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
         delay(15);
-        myservo.write(Servo_Val);
+        myservo.write(Servo_Val);//,30,true);
         Blynk.virtualWrite(V0, Servo_Val);
         Blynk.virtualWrite(V2, set_DPM);
      }
@@ -110,7 +120,7 @@ void pause_requests(){
      if (pause == 0) {                       // exit clause to put the valve back after pausing
         myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
         delay(15);
-        myservo.write(Servo_Val);
+        myservo.write(Servo_Val);//,30,true);
         Blynk.virtualWrite(V0, Servo_Val);
      }
   }
@@ -156,8 +166,8 @@ void open_up(){
 
     myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
     delay(15);  
-    myservo.write(Servo_Val);
-              
+    myservo.write(Servo_Val);//,30,true);
+    Blynk.virtualWrite(V0, Servo_Val);
     creep = 0;
   }
 }
@@ -166,7 +176,8 @@ void tune(){
   for(Servo_Val - 5; Servo_Val < 190; Servo_Val++){
     myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
     delay(15);
-    myservo.write(Servo_Val); 
+    myservo.write(Servo_Val);//,30,true); 
+    Blynk.virtualWrite(V0, Servo_Val);
     add = 0;
     
     for(int run_tune = 0; run_tune < tuning_drops; run_tune++){
@@ -175,7 +186,19 @@ void tune(){
         Blynk.run();
         timer.run();
         pause_requests();
-        if (millis() - lastDrop > 2500) myservo.detach(); // turn off servo after 2.5 seconds to reduce jitter noise
+        
+        if (millis() - High_LED > 500){ // add LED indicator for tuning
+          digitalWrite(LED_PIN, LOW);  
+          Low_LED = millis();
+          High_LED = INFINITY;
+        }
+        if (millis() - Low_LED > 500){  // add LED indicator for tuning
+          digitalWrite(LED_PIN, HIGH); 
+          High_LED = millis();
+          Low_LED = INFINITY;
+        }
+        
+        //if (millis() - lastDrop > 2500) myservo.detach(); // turn off servo after 2.5 seconds to reduce jitter noise
         /*wait for a drop ... accept Blynk requests, timer requests, and pause requests*/
       }
       
@@ -209,6 +232,7 @@ void tune(){
     DPM_tune_avg = add / tuning_drops;
     
     if (DPM_tune_avg < set_DPM) {break;}
+    if (restart == 1) {restart = 0; break;}
   }
 }
 
@@ -242,9 +266,9 @@ void setup()
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   
-  myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+  myservo.attach(ServoPIN);//, servo_min, servo_max);  // attaches the servo on pin A0 to the servo object ==================== A0
   delay(15);
-  myservo.write(Servo_Val);
+  myservo.write(Servo_Val);//,30,true);
   
   Blynk.begin(auth, "ASUS-BOB-BOB-Jelly-Jube", "fuck off get your own");
   
@@ -275,7 +299,7 @@ void setup()
 
   //Blynk.tweet("Brewing a fresh pot of Cold Drip Coffee with my Drop-BOB v1.0: Check it out at www.bobbobblogs.blogspot.com");
   
-  timer.setInterval(30000L, open_up); // open up the servo every 60 seconds that no drops come ... not a Blynk update
+  timer.setInterval(10000L, open_up); // open up the servo every 5 seconds if no drops come ... not a Blynk update
 
   tune(); //start by tuning the system
 }//================================================================================END SETUP========================
@@ -345,10 +369,12 @@ void loop(){
       Servo_Val = Servo_Val - kp * error - ki * errSum - kd * dErr; // Set servo change depending on how far away from set_DPM you are at
       if (Servo_Val < servo_min) Servo_Val = servo_min;
       if (Servo_Val > servo_max) Servo_Val = servo_max;
-
+      
+      /*
       myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
       delay(15);
-      myservo.write(Servo_Val);
+      myservo.write(Servo_Val);//,30,true);*/ //REMOUVED TO ALLOW FOR FINER SERVO CONTROL ITERATIVELY
+      
     }/*
     else if ( DPM > set_DPM && first_drop == 0) { // This is to give a Forward or Reverse BIAS (commented out)
       Servo_Val = Servo_Val - kp * error - ki * errSum - kd * dErr; // Set servo change depending on how far away from set_DPM you are at
@@ -356,7 +382,7 @@ void loop(){
       if (Servo_Val > servo_max) Servo_Val = servo_max;
       myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
       delay(15);
-      myservo.write(Servo_Val);
+      myservo.write(Servo_Val);//,30,true);
     }*/
     
     Serial.print(delta);Serial.print("\t");Serial.print("ms");
@@ -395,14 +421,31 @@ void loop(){
   }//----------------------------------------------------------------------------------------------------big loop 1
 
   if (voltage < 1.0 && state == LOW ){  // end of pulse, now we may expect a new one, DEBOUNCE
-    if (millis() - lastDrop > 100) state = HIGH; // only go back to state high if some time has passed.
+    if (millis() - lastDrop > 50) state = HIGH; // only go back to state high if some time has passed.
   }
 
-  if (millis() - lastDrop > 1500) myservo.detach(); // turn off servo after 2.5 seconds to reduce jitter noise
+  //if (millis() - lastDrop > 5000) myservo.detach(); // turn off servo after 5 seconds to reduce jitter noise
 
   lastErr = error;
+
+  if( (millis() - Servo_adjust) > Servo_update_Speed){
+    Servo_adjust = millis();
+    
+    if(myservo.read() > Servo_Val){
+      myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+      delay(15);
+      myservo.write(myservo.read() - Servo_movements);
+      Serial.println("opening valve");
+    }
+    else if(myservo.read() < Servo_Val){
+      myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+      delay(15);
+      myservo.write(myservo.read() + Servo_movements);
+      Serial.println("closing valve");
+    }
+  }
   
-  if( (millis()-lastDrop) > 60000 && Servo_Val < (servo_min + 2)){
+  if( (millis()-lastDrop) > 180000 && Servo_Val < (servo_min + 2)){
     Serial.println();Serial.println("FINISHED!!!");
     //Blynk.tweet("Brew DONE!!: www.bobbobblogs.blogspot.com");
     myservo.detach();
