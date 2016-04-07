@@ -266,9 +266,22 @@ void setup()
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   
-  myservo.attach(ServoPIN);//, servo_min, servo_max);  // attaches the servo on pin A0 to the servo object ==================== A0
-  delay(15);
-  myservo.write(Servo_Val);//,30,true);
+  while(myservo.read() != Servo_Val){
+    
+    if(myservo.read() > Servo_Val){
+      myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+      delay(15);
+      myservo.write(myservo.read() - Servo_movements);
+    }
+    else if(myservo.read() < Servo_Val){
+      myservo.attach(ServoPIN);  // attaches the servo on pin A0 to the servo object ==================== A0
+      delay(15);
+      myservo.write(myservo.read() + Servo_movements);
+    }
+
+    delay(50);
+    
+  }
   
   Blynk.begin(auth, "ASUS-BOB-BOB-Jelly-Jube", "fuck off get your own");
   
