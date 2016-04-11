@@ -35,7 +35,7 @@ unsigned long lastTime = 0;
 double errSum = 0, lastErr = 0, error = 0, dErr = 0;
 const double kp = 0.7, ki = 0.4/60000.0, kd = 0; //kp tunes to 1.3 alone
 
-//======================================================
+//====================general variables==================================
 
 //VarSpeedServo myservo;  // create servo object to control a servo 
 Servo myservo;  // create servo object to control a servo 
@@ -58,12 +58,18 @@ float B = 0;
 long uptime = 0;
 float Low_LED = millis();
 float High_LED = millis();
+float Servo_adjust = millis(); //servo adjustment time keeper
 
-// SETUP VALUES ======================================================
+// Time until sleep (in seconds):
+const int sleepTimeS = 5;
+
+// SERVO SETUP VALUES ======================================================
 int set_DPM = 6;
 int Servo_Val = 165; // starting servo value (0 is full open 180 is full close)
 const int servo_min = 15;
 const int servo_max = 195;
+const int Servo_update_Speed = 500; // update every X milliseconds
+const int Servo_movements = 1;      // how much to update servo position by
 
 // RUNNING AVERAGE VARIABLES =========================================
 const int numReadings = 3;             // minimum 2
@@ -87,17 +93,12 @@ float add = 0;
 float DPM_tune_avg = 0;
 //====================================================================
 
-// Servo Variables ==================================================
-const int Servo_update_Speed = 500; // update every X milliseconds
-const int Servo_movements = 1;      // how much to update servo position by
-float Servo_adjust = millis();
-
-
 //=========================================================================BLYNK functions & Widgets=====
 
 void pause_requests(){
   while(pause == 1){
      Blynk.run(); 
+     //ESP.deepSleep(sleepTimeS * 1000000);
      int lapse = millis() - slide_time;
 
      if (slide_time == 0){                  // If the pause comes from the app, close the servo to prevent drops (true pause)
@@ -182,8 +183,9 @@ void tune(){
     
     for(int run_tune = 0; run_tune < tuning_drops; run_tune++){
       
-      while(analogRead(photo_interuptor_PIN)<500){
+      while(analogRead(photo_interuptor_PIN)>500){
         Blynk.run();
+        //ESP.deepSleep(sleepTimeS * 1000000);
         timer.run();
         pause_requests();
         
@@ -256,10 +258,10 @@ void setup()
   
   WiFi.begin(ssid, password);
   
-  while (WiFi.status() != WL_CONNECTED) {
+  /*while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-  }
+  }*/ don't wait until wifi connects ... in case someone needs to use it out of the box with no setup
 
   Serial.println("");
   Serial.println("WiFi connected");  
@@ -327,6 +329,7 @@ void loop(){
   }
  
   Blynk.run(); //Constant Blynk connection
+  //ESP.deepSleep(sleepTimeS * 1000000);
   timer.run(); // Initiates SimpleTimer
 
   digitalWrite(LED_PIN, HIGH); // for some odd reason ... LED PIN to "HIGH" means "off"
@@ -337,7 +340,7 @@ void loop(){
     voltage = 5.0 * raw / 1023; // convert it to voltage
   }
     
-  if (voltage > 1.0 && state == HIGH) {//-----------------------------------------------------------------------big loop 1
+  if (voltage < 1.0 && state == HIGH) {//-----------------------------------------------------------------------big loop 1
     
     state = LOW;
     button = 0;
