@@ -261,7 +261,7 @@ void setup()
   /*while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-  }*/ don't wait until wifi connects ... in case someone needs to use it out of the box with no setup
+  }*/ //don't wait until wifi connects ... in case someone needs to use it out of the box with no setup
 
   Serial.println("");
   Serial.println("WiFi connected");  
